@@ -8,6 +8,16 @@
 
 WordMat creates a new ribbon-menu in Word with math functionality. You can do simple and advanced calculations on any math expression entered using the builtin equation editor, plot graphs and much more.
 
+## New: Command-driven Plotting
+WordMat now supports command-driven plotting with simple text commands:
+```
+plot(sin(x), -2π, 2π)
+plot(x^2, -5, 5; title="Parabola", grid=true)
+```
+Select any plot(...) command in your document and click **Plot Selection** to generate and insert a plot image.
+
+Supported backends: Python/Matplotlib and Gnuplot. See [PLOT_FEATURE_README.md](PLOT_FEATURE_README.md) for full details.
+
 This GitHub-site is for people that wants to contribute to the project by reporting bugs, help fix bugs, translate or add new functionality.
 See [CONTRIBUTING.md](https://github.com/Eduap-com/WordMat/blob/master/CONTRIBUTING.md)
 

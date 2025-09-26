@@ -237,62 +237,75 @@ Private Function IsValidExpression(expr As String) As Boolean
     
     IsValidExpression = False
     
-    ' Allowed functions
-    Dim allowedFuncs As String
-    allowedFuncs = "sin,cos,tan,asin,acos,atan,exp,log,ln,sqrt,abs"
+    ' Normalize expression for validation
+    Dim cleanExpr As String
+    cleanExpr = LCase(Replace(Replace(expr, " ", ""), "π", "pi"))
     
-    ' Allowed constants
-    Dim allowedConsts As String
-    allowedConsts = "pi,π,e,x"
+    ' Check for obviously dangerous patterns
+    If InStr(cleanExpr, "system") > 0 Or InStr(cleanExpr, "exec") > 0 Or _
+       InStr(cleanExpr, "eval") > 0 Or InStr(cleanExpr, "import") > 0 Or _
+       InStr(cleanExpr, "__") > 0 Or InStr(cleanExpr, "shell") > 0 Then
+        Exit Function
+    End If
     
-    ' Allowed operators and chars
-    Dim allowedChars As String
-    allowedChars = "+-*/^()0123456789. "
+    ' Define allowed components
+    Dim allowedFunctions As String
+    allowedFunctions = ",sin,cos,tan,asin,acos,atan,exp,log,ln,sqrt,abs,"
     
-    ' Simple validation - check each character/token
-    ' This is a basic implementation - a full parser would be better
+    Dim allowedConstants As String  
+    allowedConstants = ",pi,e,x,"
+    
+    ' Check each character
     Dim i As Integer
-    For i = 1 To Len(expr)
+    For i = 1 To Len(cleanExpr)
         Dim char As String
-        char = Mid(expr, i, 1)
+        char = Mid(cleanExpr, i, 1)
         
-        If InStr(allowedChars, char) = 0 Then
-            ' Check if it's part of a function or constant
-            Dim found As Boolean
-            found = False
+        ' Allow numbers, operators, parentheses, decimal point
+        If char >= "0" And char <= "9" Then
+            ' Numbers are OK
+        ElseIf char = "+" Or char = "-" Or char = "*" Or char = "/" Or _
+               char = "^" Or char = "(" Or char = ")" Or char = "." Then
+            ' Operators and parentheses are OK
+        Else
+            ' Must be part of a function or constant name
+            Dim validToken As Boolean
+            validToken = False
             
-            ' Check functions
-            Dim funcs As Variant
-            funcs = Split(allowedFuncs, ",")
+            ' Check if this starts a valid function or constant
             Dim j As Integer
-            For j = 0 To UBound(funcs)
-                If i <= Len(expr) - Len(funcs(j)) + 1 Then
-                    If Mid(expr, i, Len(funcs(j))) = funcs(j) Then
-                        found = True
-                        Exit For
-                    End If
+            For j = 1 To 10 ' Maximum function/constant length
+                If i + j - 1 > Len(cleanExpr) Then Exit For
+                
+                Dim token As String
+                token = "," & Mid(cleanExpr, i, j) & ","
+                
+                If InStr(allowedFunctions, token) > 0 Or InStr(allowedConstants, token) > 0 Then
+                    validToken = True
+                    i = i + j - 1 ' Skip ahead past this token
+                    Exit For
                 End If
             Next j
             
-            ' Check constants
-            If Not found Then
-                Dim consts As Variant
-                consts = Split(allowedConsts, ",")
-                For j = 0 To UBound(consts)
-                    If i <= Len(expr) - Len(consts(j)) + 1 Then
-                        If Mid(expr, i, Len(consts(j))) = consts(j) Then
-                            found = True
-                            Exit For
-                        End If
-                    End If
-                Next j
-            End If
-            
-            If Not found Then
-                Exit Function
+            If Not validToken Then
+                Exit Function ' Invalid character/token found
             End If
         End If
     Next i
+    
+    ' Additional check: ensure parentheses are balanced
+    Dim parenCount As Integer
+    parenCount = 0
+    For i = 1 To Len(cleanExpr)
+        If Mid(cleanExpr, i, 1) = "(" Then
+            parenCount = parenCount + 1
+        ElseIf Mid(cleanExpr, i, 1) = ")" Then
+            parenCount = parenCount - 1
+            If parenCount < 0 Then Exit Function ' Unbalanced
+        End If
+    Next i
+    
+    If parenCount <> 0 Then Exit Function ' Unbalanced parentheses
     
     IsValidExpression = True
     Exit Function
@@ -382,7 +395,7 @@ Private Function RenderWithMatplotlib(cmd As PlotCommand, outputPath As String) 
     
     ' Check if output file was created
     If Dir(outputPath) = "" Then
-        ShowPlotError "Matplotlib failed to generate plot. Check Python installation and matplotlib package."
+        ShowPlotErrorWithSuggestion "Matplotlib failed to generate plot. Check Python installation and matplotlib package.", "matplotlib"
         Exit Function
     End If
     
@@ -516,7 +529,7 @@ Private Function RenderWithGnuplot(cmd As PlotCommand, outputPath As String) As 
     
     ' Check if output file was created
     If Dir(outputPath) = "" Then
-        ShowPlotError "Gnuplot failed to generate plot. Check gnuplot installation."
+        ShowPlotErrorWithSuggestion "Gnuplot failed to generate plot. Check gnuplot installation.", "gnuplot"
         Exit Function
     End If
     
@@ -615,3 +628,51 @@ Private Function ExecuteCommandWithTimeout(command As String, timeoutSeconds As 
 CommandError:
     ExecuteCommandWithTimeout = -1
 End Function
+
+' Get plot options from registry or use defaults
+Public Function GetPlotOptions() As PlotOptions
+    On Error Resume Next
+    
+    If plotOpts.DefaultBackend = "" Then
+        InitializePlotOptions
+        ' TODO: Load from registry settings
+        ' plotOpts.DefaultBackend = GetRegistrySetting("PlotDefaultBackend", "matplotlib")
+        ' plotOpts.DefaultWidth = GetRegistrySetting("PlotDefaultWidth", 800)
+        ' etc.
+    End If
+    
+    GetPlotOptions = plotOpts
+End Function
+
+' Save plot options to registry
+Public Sub SavePlotOptions(opts As PlotOptions)
+    On Error Resume Next
+    
+    plotOpts = opts
+    ' TODO: Save to registry
+    ' SetRegistrySetting "PlotDefaultBackend", opts.DefaultBackend
+    ' SetRegistrySetting "PlotDefaultWidth", opts.DefaultWidth  
+    ' etc.
+End Sub
+
+' Show user-friendly error with suggestions
+Private Sub ShowPlotErrorWithSuggestion(message As String, backend As String)
+    Dim fullMessage As String
+    fullMessage = message
+    
+    If backend = "matplotlib" Then
+        fullMessage = fullMessage & vbCrLf & vbCrLf & _
+                     "To use Matplotlib backend:" & vbCrLf & _
+                     "1. Install Python (https://python.org)" & vbCrLf & _
+                     "2. Install packages: pip install matplotlib numpy" & vbCrLf & _
+                     "3. Ensure 'python' is in your system PATH"
+    ElseIf backend = "gnuplot" Then
+        fullMessage = fullMessage & vbCrLf & vbCrLf & _
+                     "To use Gnuplot backend:" & vbCrLf & _
+                     "1. Install Gnuplot (http://gnuplot.sourceforge.net/)" & vbCrLf & _
+                     "2. Ensure 'gnuplot' is in your system PATH" & vbCrLf & _
+                     "3. Or configure the full path in WordMat settings"
+    End If
+    
+    MsgBox fullMessage, vbCritical, "WordMat Plot Error"
+End Sub

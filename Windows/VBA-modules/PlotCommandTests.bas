@@ -50,6 +50,15 @@ Public Sub RunPlotTests()
         Debug.Print "✗ Test 4 FAILED: Expression validation"
     End If
     
+    ' Test 5: Script generation
+    testCount = testCount + 1
+    If TestScriptGeneration() Then
+        passCount = passCount + 1
+        Debug.Print "✓ Test 5 PASSED: Script generation"
+    Else
+        Debug.Print "✗ Test 5 FAILED: Script generation"
+    End If
+    
     Debug.Print "=== Test Results: " & passCount & "/" & testCount & " tests passed ==="
     
     If passCount = testCount Then
@@ -159,6 +168,45 @@ Private Function TestExpressionValidation() As Boolean
 TestError:
     Debug.Print "Error in TestExpressionValidation: " & Err.Description
     TestExpressionValidation = False
+End Function
+
+Private Function TestScriptGeneration() As Boolean
+    On Error GoTo TestError
+    
+    TestScriptGeneration = False
+    
+    Dim cmd As PlotCommand
+    cmd.Expression = "sin(x)"
+    cmd.XMin = "-pi"
+    cmd.XMax = "pi"
+    cmd.Title = "Test Plot"
+    cmd.Grid = True
+    cmd.Width = 600
+    cmd.Height = 400
+    cmd.Dpi = 150
+    cmd.LineWidth = 1.5
+    
+    ' Test matplotlib script generation
+    Dim script As String
+    script = GenerateMatplotlibScript(cmd, "C:\temp\test.png")
+    
+    If InStr(script, "sin(x)") = 0 Then Exit Function
+    If InStr(script, "plt.grid(True)") = 0 Then Exit Function
+    If InStr(script, "Test Plot") = 0 Then Exit Function
+    
+    ' Test gnuplot script generation  
+    script = GenerateGnuplotScript(cmd, "C:\temp\test.png")
+    
+    If InStr(script, "sin(x)") = 0 Then Exit Function
+    If InStr(script, "set grid") = 0 Then Exit Function
+    If InStr(script, "Test Plot") = 0 Then Exit Function
+    
+    TestScriptGeneration = True
+    Exit Function
+    
+TestError:
+    Debug.Print "Error in TestScriptGeneration: " & Err.Description  
+    TestScriptGeneration = False
 End Function
 
 ' Test function to validate plotting with a simple expression
