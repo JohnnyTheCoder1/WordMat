@@ -23,6 +23,7 @@ Enum KeybShortcut
     InsertRefToEqution
     GradTegn
     Open3DPLot
+    PlotSelection
 End Enum
 
 Public UFMSettings As UserFormSettings

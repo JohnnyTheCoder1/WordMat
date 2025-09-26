@@ -281,7 +281,7 @@ Sub Rib_FSbinspred(control As IRibbonControl)
 End Sub
 
 Sub Rib_FSbinusik(control As IRibbonControl)
-    insertribformel "", "p" & VBA.ChrW$(770) & "±2" & VBA.ChrW$(183) & VBA.ChrW$(8730) & "((p" & VBA.ChrW$(770) & "" & VBA.ChrW$(183) & "(1-p" & VBA.ChrW$(770) & "))/n)"
+    insertribformel "", "p" & VBA.ChrW$(770) & "ï¿½2" & VBA.ChrW$(183) & VBA.ChrW$(8730) & "((p" & VBA.ChrW$(770) & "" & VBA.ChrW$(183) & "(1-p" & VBA.ChrW$(770) & "))/n)"
 End Sub
 
 'Callback for sandnorm1 onAction
@@ -801,6 +801,11 @@ End Sub
 Sub Rib_trianglesolver(control As IRibbonControl)
     Dim UFtriangle As New UserFormTriangle
     UFtriangle.Show vbModeless
+End Sub
+
+'Callback for plot selection button
+Sub Rib_PlotSelection(control As IRibbonControl)
+    PlotSelection
 End Sub
 Sub Rib_om(control As IRibbonControl)
     UserFormAbout.Show
